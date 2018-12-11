@@ -1,5 +1,5 @@
 Hello! 
-Wellcom to "Search&find" Search Engine
+Wellcome to "Search&find" Search Engine
 To work with this search engine follow this instraction
 	1. start the program by clicking on run.exe file or open the code in Python environment
 		1.1 if you run the run file your computer needs to be codified to run a python program through the CMD
