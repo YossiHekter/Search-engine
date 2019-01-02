@@ -955,11 +955,12 @@ def add_sim_word(query):
     query = query.split()
     sim_word = ""
     for word in query:
-        json_url = urlopen(url + word+"&max=3")
+        json_url = urlopen(url + word+"&max=2")
         data = json.loads(json_url.read())
         for key in data:
+            if key['score'] < 10000:
+                break
             sim_word += (str(key['word']) + " ")
-    sim_word = sim_word[:-1]
     return sim_word
 
 
@@ -976,7 +977,7 @@ def parse_query(query_title, query_sem, idx, stemmer, path):
     parse_text(term_in_query_sem, {}, {}, query_sem, idx, {}, stemmer)
     for term in term_in_query_sem:
         if term.lower() in final_query_term:
-            final_query_term[term.lower()].term_rank = 2
+            final_query_term[term.lower()].term_rank = 1
         else:
             final_query_term[term.lower()] = term_in_query_sem[term]
             final_query_term[term.lower()].term_rank = 0.5

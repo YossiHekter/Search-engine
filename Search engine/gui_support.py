@@ -129,13 +129,10 @@ def run_query_file():
                         global language_choice
                         global city_choice
 
-                        s_time = datetime.datetime.now()
                         reset_lists_on_screen_query()
                         query_res = Searcher.search(dist_path, "", stemmer, query_path, language_choice, city_choice, semantic)
                         fill_query_list()
-                        e_time = datetime.datetime.now()
                         bord_state('normal')
-                        print(str(e_time-s_time))
                         showinfo('info', 'Finished to find documents for queries.')
                     t = threading.Thread(target=rank_query)
                     t.start()

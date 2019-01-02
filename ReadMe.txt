@@ -7,6 +7,10 @@ To work with this search engine follow this instraction
 		2.1 you can enter corpus's path and path to save the file,  and the engine create dictionary for you
 		2.2 or you can upload dictionary by press the button "Upload dictionary"
 	3. show dictionary by press the "show" button
-	4. reset the system by press the "reset" button
+	4. run query
+		4.1. enter a query into the appropriate cell or select a query file
+		4.2. press "Run!" or "Run queries!" to start retrieving documents
+		4.3. You can see the documents that are relevant to the query by clicking "Show Result" after selecting a query from the list
+	5. reset the system by press the "reset" button
  
 The system built by Yossi Hekter and Roee Sanker

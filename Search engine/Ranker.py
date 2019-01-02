@@ -79,8 +79,8 @@ def set_stem_mode(stem_mode_to_save):
 
     stem_mode = stem_mode_to_save
     set_average_document_length()
-    bm25_weight = 0.9
-    cos_sim_weight = 0.1
+    bm25_weight = 0.7
+    cos_sim_weight = 0.3
     bm25_k = 1.2  # Range: [1.2 - 2.0]
     bm25_b = 0.75  # Range: 0-1.0
     bm25_idf = 0.5  # Range: 0-1.0
