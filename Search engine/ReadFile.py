@@ -140,7 +140,8 @@ def __takeDocCity():
                 docCity_lower += tmpCityList[idx].lower()
                 idx += 1
             if docCity_lower in corpus_city_dictionary:
-                docCityList.append(docCity_lower.upper())
+                city = docCity_lower[0].upper() + docCity_lower[1:len(docCity_lower)]
+                docCityList.append(city)
             else:
                 docCityList.append("")
         else:

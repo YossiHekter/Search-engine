@@ -16,9 +16,12 @@ from TmpPost import TmpPost
 # The main func receive the paths and empty dictionary and boolean if to stemming
 def start_read(corpus_path, posting_path, term_dictionary, stemmer):
     Parse.set_stop_words_file(corpus_path + "/stop_words.txt")
+    Parse.copy_stop_words_file(corpus_path + "/stop_words.txt", posting_path + "/stop_words.txt")
     directory_corpus = os.fsdecode(corpus_path)
     sub_dir_list = os.listdir(directory_corpus)
     size = int((len(sub_dir_list)-1) / 10)  # read the corpus in 11 parts
+    if size == 0:
+        size = 10
     idx = 1
     counter = 1
     ReadFile.__reset()
@@ -32,7 +35,6 @@ def start_read(corpus_path, posting_path, term_dictionary, stemmer):
     for key in city_list:
         corpus_city_dictionary[key] = [city_dic[key], {}]
     ReadFile.__reset()
-    time = datetime.datetime.now()
     sub_dir_list = os.listdir(directory_corpus)
     for dir in sub_dir_list:
         if not dir == "stop_words.txt":
@@ -204,6 +206,31 @@ def merge_final_term(final_term, value):
     return final_term
 
 
+def extract_entity(term_dictionary, dist_path, num_of_post):
+    for index in range(1, num_of_post + 1):
+        file_name = dist_path + "/doc" + str(index) + ".pkl"
+        file = open(file_name, "rb")
+        tmp = pickle.load(file)
+        file.close()
+        for key in tmp:
+            terms = tmp[key].terms_in_doc
+            upper_terms_in_doc = {}
+            for term in terms:
+                if term.isalpha() and term.upper() in term_dictionary:
+                    upper_terms_in_doc[term.upper()] = terms[term]
+            # sort the terms by there frequency
+            upper_terms_in_doc = sorted(upper_terms_in_doc.items(), key=operator.itemgetter(1))
+            size = len(upper_terms_in_doc) - 1
+            final_terms = {}
+            # take the first 5 elements from the dictionary
+            for num in range(0, min(5, size+1)):
+                final_terms[upper_terms_in_doc[size-num][0]] = upper_terms_in_doc[size-num][1]
+            tmp[key].terms_in_doc = final_terms
+        file2 = open(dist_path + "/doc" + str(index) + ".pkl", "wb+")
+        pickle.dump(tmp, file2, pickle.HIGHEST_PROTOCOL)
+        file.close()
+
+
 if __name__ == '__main__':
     global stemmer
     global dist_path
@@ -212,6 +239,7 @@ if __name__ == '__main__':
     total = datetime.datetime.now()
     term_dictionary = {}
     num_of_post = start_read(corpus_path, dist_path, term_dictionary, stemmer)
+    extract_entity(term_dictionary, dist_path, num_of_post)
     num_of_doc = merge_document_dictionary(dist_path, num_of_post, stemmer)
     new_merge(dist_path, term_dictionary, num_of_post, stemmer)
     sort_key = sorted(term_dictionary)

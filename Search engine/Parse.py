@@ -1,8 +1,11 @@
 # Class Parse
 # That class
-
+import json
 import pickle
-#from nltk.stem import PorterStemmer
+import re
+from shutil import copyfile
+from urllib.request import urlopen
+
 from MetaData import MetaData
 from PorterStemmer import PorterStemmer
 
@@ -28,10 +31,18 @@ def set_stemmer(val):
 # setter of the stop word list
 def set_stop_words_file(path):
     global __stop_words
-    global country_dict
 
     with open(path) as wordbook:
         __stop_words = set(word.strip() for word in wordbook)
+
+
+def copy_stop_words_file(path, posting_path):
+    try:
+        with open(path) as wordbook:
+            copyfile(path, posting_path)
+            wordbook.close()
+    except:
+        wordbook.close()
 
 
 def __clean_token(token):
@@ -91,9 +102,13 @@ def __is_valid_number(token):
             return True
 
     else:
+        if token == '%':
+            return False
         for c in token:
             if c == '%':
                 percent_symbol_flag = True
+                if token == '%':
+                    return False
             elif c == '/':
                 fraction_flag = True
             is_numeric_number = c.isnumeric()
@@ -200,12 +215,15 @@ def __insert_dates(posting, term_dictionary, day, month, year, doc_num, docDicti
 
 
 def __insert_to_dictionary(posting, token, docNum, docDictionary, terms_in_doc):
-    terms_in_doc[token] = ""
+    if token in terms_in_doc:
+        terms_in_doc[token] += 1
+    else:
+        terms_in_doc[token] = 1
     if token in posting:
         if docNum in posting[token].frequencyInDoc:
             curTf = posting[token].frequencyInDoc[docNum] + 1
             posting[token].frequencyInDoc[docNum] = curTf
-            if docDictionary[docNum].maxTf< curTf:
+            if not len(docDictionary) == 0 and docDictionary[docNum].maxTf < curTf:
                 docDictionary[docNum].maxTf = curTf
         else:
             curDf = posting[token].df
@@ -238,9 +256,6 @@ def parse_text(posting, term_dictionary, corpus_city_dictionary, text, doc_num, 
             token_upper = token.upper()
             next_token = ""
             next_token_lower = ""
-            if token_lower in __stop_words:
-                index += 1
-                continue
             if index < index_last_token:
                 next_token = __clean_token(text[index + 1])
                 next_token_lower = next_token.lower()
@@ -285,9 +300,87 @@ def parse_text(posting, term_dictionary, corpus_city_dictionary, text, doc_num, 
                                 term_dictionary[token_lower].append("")
                             __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
 
+                            for x in range(0, len(token_split)):  # insert every word
+                                token = token_split[x]
+                                token_lower = token.lower()
+                                token_upper = token.upper()
+                                if token_lower in __stop_words:
+                                    index += 1
+                                    continue
+                                if token_lower in corpus_city_dictionary:
+                                    if doc_num in corpus_city_dictionary[token_lower][1]:
+                                        corpus_city_dictionary[token_lower][1][doc_num].append(index)
+                                    else:
+                                        corpus_city_dictionary[token_lower][1][doc_num] = [index]
+                                if token[0].isupper():
+                                    if token.isupper():
+                                        if (stemmer):
+                                            if token_lower not in stemmer_dictionary:
+                                                tmp = token_lower
+                                                token_lower = ps.stem(token_lower)
+                                                token_upper = token_lower.upper()
+                                                stemmer_dictionary[tmp] = token_lower
+                                            else:
+                                                token_lower = stemmer_dictionary[token_lower]
+                                                token_upper = token_lower.upper()
+                                        if token_upper in term_dictionary:
+                                            term_dictionary[token_upper][0] += 1
+                                            __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                                        elif token_lower in term_dictionary:
+                                            term_dictionary[token_lower][0] += 1
+                                            __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                                        else:
+                                            term_dictionary[token_upper.lower()] = []
+                                            term_dictionary[token_upper.lower()].append(1)
+                                            term_dictionary[token_upper.lower()].append("")
+                                            __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                                    else:
+                                        if (stemmer):
+                                            if token_lower not in stemmer_dictionary:
+                                                tmp = token_lower
+                                                token_lower = ps.stem(token_lower)
+                                                token_upper = token_lower.upper()
+                                                stemmer_dictionary[tmp] = token_lower
+                                            else:
+                                                token_lower = stemmer_dictionary[token_lower]
+                                                token_upper = token_lower.upper()
+                                        if token_upper in term_dictionary:
+                                            term_dictionary[token_upper][0] += 1
+                                            __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                                        elif token_lower in term_dictionary:
+                                            term_dictionary[token_lower][0] += 1
+                                            __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                                        else:
+                                            term_dictionary[token_upper] = []
+                                            term_dictionary[token_upper].append(1)
+                                            term_dictionary[token_upper].append("")
+                                            __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                                else:
+                                    if (stemmer):
+                                        if token_lower not in stemmer_dictionary:
+                                            tmp = token_lower
+                                            token_lower = ps.stem(token_lower)
+                                            token_upper = token_lower.upper()
+                                            stemmer_dictionary[tmp] = token_lower
+                                        else:
+                                            token_lower = stemmer_dictionary[token_lower]
+                                            token_upper = token_lower.upper()
+                                    if token_lower in term_dictionary:
+                                        term_dictionary[token_lower][0] += 1
+                                        __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                                    elif token_upper in term_dictionary:
+                                        term_dictionary[token_lower] = term_dictionary[token_upper]
+                                        term_dictionary[token_lower][0] += 1
+                                        del term_dictionary[token_upper]
+                                        __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                                    else:
+                                        term_dictionary[token_lower] = []
+                                        term_dictionary[token_lower].append(1)
+                                        term_dictionary[token_lower].append("")
+                                        __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+
                     # case 1.3: num-num or num-num-num
                     elif is_number(token_split[0]):
-
                         only_numeric = True
                         for word in token_split:
                             if not is_number(word):
@@ -425,6 +518,9 @@ def parse_text(posting, term_dictionary, corpus_city_dictionary, text, doc_num, 
 
             # case 5: regular word
             elif __is_valid_word(token, token_lower):
+                if token_lower in __stop_words:
+                    index += 1
+                    continue
                 if token_lower in corpus_city_dictionary:
                     if doc_num in corpus_city_dictionary[token_lower][1]:
                         corpus_city_dictionary[token_lower][1][doc_num].append(index)
@@ -501,8 +597,77 @@ def parse_text(posting, term_dictionary, corpus_city_dictionary, text, doc_num, 
             elif __is_valid_number(token):
                 index = insert_number(text, token, next_token, next_token_lower, term_dictionary,
                               posting, doc_num, docDictionary, index, terms_in_doc)
+            # case 5: if contin /
+            elif '/' in token:
+                token_split = token.split('/')
+                only_words = True
+                for word in token_split:
+                    if not word.isalpha():
+                        only_words = False
+                if only_words:
+                    for x in range(0, len(token_split)):  # insert every word
+                        token = token_split[x]
+                        token_lower = token.lower()
+                        if token_lower in __stop_words:
+                            index += 1
+                            continue
+                        token_upper = token.upper()
+                        if token_lower in corpus_city_dictionary:
+                            if doc_num in corpus_city_dictionary[token_lower][1]:
+                                corpus_city_dictionary[token_lower][1][doc_num].append(index)
+                            else:
+                                corpus_city_dictionary[token_lower][1][doc_num] = [index]
+                        if token[0].isupper():
+                            if token.isupper():
+                                if (stemmer):
+                                    if token_lower not in stemmer_dictionary:
+                                        tmp = token_lower
+                                        token_lower = ps.stem(token_lower)
+                                        token_upper = token_lower.upper()
+                                        stemmer_dictionary[tmp] = token_lower
+                                    else:
+                                        token_lower = stemmer_dictionary[token_lower]
+                                        token_upper = token_lower.upper()
+                                if token_upper in term_dictionary:
+                                    term_dictionary[token_upper][0] += 1
+                                    __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                                elif token_lower in term_dictionary:
+                                    term_dictionary[token_lower][0] += 1
+                                    __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                                else:
+                                    term_dictionary[token_upper.lower()] = []
+                                    term_dictionary[token_upper.lower()].append(1)
+                                    term_dictionary[token_upper.lower()].append("")
+                                    __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                        else:
+                            if (stemmer):
+                                if token_lower not in stemmer_dictionary:
+                                    tmp = token_lower
+                                    token_lower = ps.stem(token_lower)
+                                    token_upper = token_lower.upper()
+                                    stemmer_dictionary[tmp] = token_lower
+                                else:
+                                    token_lower = stemmer_dictionary[token_lower]
+                                    token_upper = token_lower.upper()
+                            if token_upper in term_dictionary:
+                                term_dictionary[token_upper][0] += 1
+                                __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
+                            elif token_lower in term_dictionary:
+                                term_dictionary[token_lower][0] += 1
+                                __insert_to_dictionary(posting, token_lower, doc_num, docDictionary, terms_in_doc)
+                            else:
+                                term_dictionary[token_upper] = []
+                                term_dictionary[token_upper].append(1)
+                                term_dictionary[token_upper].append("")
+                                __insert_to_dictionary(posting, token_upper.lower(), doc_num, docDictionary, terms_in_doc)
         index += 1
-    docDictionary[doc_num].number_of_terms = len(terms_in_doc)
+    if doc_num in docDictionary:
+        docDictionary[doc_num].number_of_terms = len(terms_in_doc)
+        num1 = 0
+        for key in terms_in_doc:
+            num1 += terms_in_doc[key]
+        docDictionary[doc_num].length = num1
+        docDictionary[doc_num].terms_in_doc = terms_in_doc
 
 # That func analyze that token and preparation the number for saving
 def insert_number(text,  token, next_token, next_token_lower, term_dictionary, posting, doc_num, docDictionary, index
@@ -751,6 +916,77 @@ def parse_docs(posting, term_dictionary, corpus_city_dictionary, text_dictionary
     del posting
     del docDictionary
 
+
+def parse_queries(source_path, destination_path, query, stemmer, semantic):
+    index = 0
+    list_save_queries = []
+
+    if source_path == "":
+        list_save_queries.append("query_post"+str(index))
+        sem = ""
+        if semantic:
+            sem += " " + add_sim_word(query)
+        parse_query(query, sem, index, stemmer, destination_path)
+    else:
+        queries_file = open(source_path, 'r+')
+        queries = queries_file.read()
+        queries_list_num = re.compile('Number:(.*?)<title>', re.DOTALL).findall(queries)
+        queries_list = re.compile('<title>(.*?)<desc>', re.DOTALL).findall(queries)
+        queries_desc_list = re.compile('<desc>(.*?)<narr>', re.DOTALL).findall(queries)
+        queries_file.close()
+        for query in queries_list:
+            query = query.replace('\n', "")
+            query = query[1:-1]
+            desc = queries_desc_list[index].replace('\n'," ")
+            desc = desc.replace('Description:','')
+            query_num = queries_list_num[index].replace('\n', "")
+            query_num = query_num.replace(" ", "")
+            list_save_queries.append("query_post"+str(query_num))
+            sem = desc
+            if semantic:
+                sem += " " + add_sim_word(query)
+            parse_query(query, sem, query_num, stemmer, destination_path)
+            index += 1
+    return list_save_queries
+
+
+def add_sim_word(query):
+    url = "https://api.datamuse.com/words?ml=";
+    query = query.split()
+    sim_word = ""
+    for word in query:
+        json_url = urlopen(url + word+"&max=3")
+        data = json.loads(json_url.read())
+        for key in data:
+            sim_word += (str(key['word']) + " ")
+    sim_word = sim_word[:-1]
+    return sim_word
+
+
+def parse_query(query_title, query_sem, idx, stemmer, path):
+    final_query_term = {}
+
+    term_in_query_title = {}
+    parse_text(term_in_query_title, {}, {}, query_title, idx, {}, stemmer)
+    for term in term_in_query_title:
+        final_query_term[term.lower()] = term_in_query_title[term]
+        final_query_term[term.lower()].term_rank = 1
+
+    term_in_query_sem = {}
+    parse_text(term_in_query_sem, {}, {}, query_sem, idx, {}, stemmer)
+    for term in term_in_query_sem:
+        if term.lower() in final_query_term:
+            final_query_term[term.lower()].term_rank = 2
+        else:
+            final_query_term[term.lower()] = term_in_query_sem[term]
+            final_query_term[term.lower()].term_rank = 0.5
+
+    save_query(idx, final_query_term, path)
+    del term_in_query_title
+    del term_in_query_sem
+    del final_query_term
+
+
 # That func save the tmp post files.
 def saveFiles(idx, posting, docDictionary, posting_path):
     sort_key = sorted(posting)
@@ -762,4 +998,14 @@ def saveFiles(idx, posting, docDictionary, posting_path):
     file.close()
     file = open(posting_path + "/doc" + str(idx) + ".pkl", "wb+")
     pickle.dump(docDictionary, file, pickle.HIGHEST_PROTOCOL)
+    file.close()
+
+
+def save_query(idx, term_in_query, path):
+    sort_key = sorted(term_in_query)
+    sort_posting = {}
+    for key in sort_key:
+        sort_posting[key] = term_in_query[key]
+    file = open(path + "/query_post" + str(idx) + ".pkl", "wb+")
+    pickle.dump(sort_posting, file, pickle.HIGHEST_PROTOCOL)
     file.close()
